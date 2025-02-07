@@ -1,0 +1,14 @@
+.map2-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.map2-menu {
+  padding: 10px;
+  background-color: #f0f0f0;
+}
+
+.map2 {
+  flex: 1;
+}
