@@ -1,70 +1,106 @@
-# Getting Started with Create React App
+## Описание проекта
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+**My App** — это веб-приложение для работы с интерактивными картами, имеющее интеграцию геоинформационным сервисом GeoServer. Приложение построено с использованием React для клиентской части и OpenLayers для работы с картографическими данными.
 
-## Available Scripts
+### Основной функционал
 
-In the project directory, you can run:
+- **Интерактивная карта:**
+  - Используется базовый слой OpenStreetMap.
+  - Добавляются динамические WMS-слои с GeoServer, позволяющие отображать геоданные (например, "topp:states", "topp:tasmania_roads" и "topp:tasmania_water_bodies").
 
-### `npm start`
+- **Переключение слоев:**
+  - Пользователь может включать или отключать видимость отдельных WMS-слоев с помощью чекбоксов, что позволяет настраивать отображение карты по своему усмотрению.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Аутентификация:**
+  - Форма авторизации реализована для управления доступом к расширенной карте. При вводе корректных учетных данных пользователь перенаправляется на страницу с дополнительными данными.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
 
-### `npm test`
+### Интеграция с GeoServer
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Приложение обращается к GeoServer через WMS-запросы, что позволяет динамически загружать геопространственные данные. Для корректной работы убедитесь, что:
 
-### `npm run build`
+- **GeoServer запущен и доступен** по адресу `http://localhost:8080/geoserver`.
+- На GeoServer настроены слои с именами:
+  - `topp:states`
+  - `topp:tasmania_roads`
+  - `topp:tasmania_water_bodies`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Запуск проекта
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. **Установка зависимостей:**
+   ```bash
+   npm install
+   ```
 
-### `npm run eject`
+2. **Запуск приложения:**
+   ```bash
+   npm start
+   ```
+   Приложение по умолчанию открывается на порту 3000.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+3. **Запуск GeoServer:**
+   Следуйте инструкции по установке GeoServer (Stand-alone, через Tomcat) и убедитесь, что сервер доступен по адресу `http://localhost:8080/geoserver`.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Установка и запуск GeoServer
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Варианты установки GeoServer
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+#### A. Stand-alone версия
 
-## Learn More
+**На Windows:**
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+1. **Скачивание:**  
+   Перейдите на [официальный сайт GeoServer](https://geoserver.org/download/) и скачайте установщик
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+2. **Распаковка и запуск:**  
+   - Запустите установщик и следуйте инструкциям.
+   - Откройте браузер по адресу:
+     ```
+     http://localhost:8080/geoserver
+     ```
 
-### Code Splitting
+**На Linux:**
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+1. **Скачивание:**  
+   Скачайте ZIP-архив с [официального сайта GeoServer](https://geoserver.org/download/).
 
-### Analyzing the Bundle Size
+2. **Распаковка:**
+   ```bash
+   unzip geoserver-<version>-bin.zip -d /opt/geoserver
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+3. **Запуск:**
+   ```bash
+   cd /opt/geoserver/geoserver-<version>
+   java -jar start.jar
+   ```
+   - GeoServer будет доступен по адресу:
+     ```
+     http://localhost:8080/geoserver
+     ```
 
-### Making a Progressive Web App
+#### B. Установка через Apache Tomcat (развертывание WAR-файла)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+1. **Убедитесь, что установлен Java и Apache Tomcat.**  
+   *(На Ubuntu можно установить Tomcat9: `sudo apt install tomcat9`)*
 
-### Advanced Configuration
+2. **Скачивание WAR-файла:**  
+   Получите `geoserver.war` с [официального сайта GeoServer](https://geoserver.org/download/).
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+3. **Размещение WAR-файла:**  
+   Скопируйте файл в каталог `webapps` Tomcat:
+   ```bash
+   sudo cp geoserver.war /var/lib/tomcat9/webapps/
+   ```
 
-### Deployment
+4. **Перезапуск Tomcat:**
+   ```bash
+   sudo systemctl restart tomcat9
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+5. **Доступ к GeoServer:**  
+   Откройте браузер и перейдите по адресу:
+   ```
+   http://localhost:8080/geoserver
+   ```
