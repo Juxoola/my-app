@@ -1,0 +1,24 @@
+services:
+  nodeapp:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - geoserver
+    networks:
+      - mynetwork
+
+  geoserver:
+    image: docker.osgeo.org/geoserver:2.26.x
+    ports:
+      - "8080:8080"
+    networks:
+      - mynetwork
+    volumes:
+      - geoserver_data:/opt/geoserver/data_dir
+
+networks:
+  mynetwork:
+
+volumes:
+  geoserver_data:
