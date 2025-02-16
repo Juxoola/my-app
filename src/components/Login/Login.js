@@ -1,5 +1,13 @@
 import React, { useState } from 'react'
-import { TextField, Button, Paper, Typography } from '@mui/material'
+import {
+	TextField,
+	Button,
+	Paper,
+	Typography,
+	InputAdornment,
+} from '@mui/material'
+import EmailIcon from '@mui/icons-material/Email'
+import LockIcon from '@mui/icons-material/Lock'
 import { useNavigate } from 'react-router-dom'
 import './Login.css'
 
@@ -24,7 +32,7 @@ const Login = () => {
 		<div className='login-container'>
 			<Paper elevation={3} className='login-paper'>
 				<Typography variant='h5' component='h1' gutterBottom>
-					Авторизация
+					Вход в систему
 				</Typography>
 				<TextField
 					label='Логин'
@@ -33,6 +41,17 @@ const Login = () => {
 					margin='normal'
 					value={username}
 					onChange={e => setUsername(e.target.value)}
+					InputProps={{
+						startAdornment: (
+							<InputAdornment position='start'>
+								<EmailIcon />
+							</InputAdornment>
+						),
+					}}
+					InputLabelProps={{
+						shrink: !!username,
+					}}
+					className='login-input'
 				/>
 				<TextField
 					label='Пароль'
@@ -42,6 +61,17 @@ const Login = () => {
 					type='password'
 					value={password}
 					onChange={e => setPassword(e.target.value)}
+					InputProps={{
+						startAdornment: (
+							<InputAdornment position='start'>
+								<LockIcon />
+							</InputAdornment>
+						),
+					}}
+					InputLabelProps={{
+						shrink: !!password,
+					}}
+					className='login-input'
 				/>
 				{error && (
 					<Typography variant='body2' color='error'>
@@ -53,7 +83,7 @@ const Login = () => {
 					color='primary'
 					onClick={handleLogin}
 					className='login-button'
-					style={{ marginTop: '10px' }}
+					fullWidth
 				>
 					Войти
 				</Button>

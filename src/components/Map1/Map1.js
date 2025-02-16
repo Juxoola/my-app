@@ -97,7 +97,7 @@ const Map1 = () => {
 					variant='contained'
 					color='primary'
 					onClick={handleLogin}
-					style={{ marginLeft: '10px' }}
+					className='login-button2'
 				>
 					Вход
 				</Button>
