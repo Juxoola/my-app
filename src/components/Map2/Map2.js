@@ -5,12 +5,24 @@ import View from 'ol/View'
 import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import TileWMS from 'ol/source/TileWMS'
-import { FormGroup, FormControlLabel, Checkbox, Box } from '@mui/material'
+import { FormGroup, FormControlLabel, Checkbox } from '@mui/material'
 import './Map2.css'
 
-const Map2 = () => {
-	const mapRef = useRef(null)
+const createWMSLayer = (layerName, visible) => {
+	return new TileLayer({
+		source: new TileWMS({
+			url:
+				process.env.REACT_APP_GEOSERVER_URL ||
+				'http://localhost:8080/geoserver/wms',
+			params: { LAYERS: layerName, TILED: true },
+			serverType: 'geoserver',
+		}),
+		visible,
+	})
+}
 
+const Map2 = () => {
+	const mapContainerRef = useRef(null)
 	const statesLayerRef = useRef(null)
 	const roadsLayerRef = useRef(null)
 	const waterLayerRef = useRef(null)
@@ -24,35 +36,15 @@ const Map2 = () => {
 			source: new OSM(),
 		})
 
-		statesLayerRef.current = new TileLayer({
-			source: new TileWMS({
-				url: 'http://localhost:8080/geoserver/wms',
-				params: { LAYERS: 'topp:states', TILED: true },
-				serverType: 'geoserver',
-			}),
-			visible: statesChecked,
-		})
-
-		roadsLayerRef.current = new TileLayer({
-			source: new TileWMS({
-				url: 'http://localhost:8080/geoserver/wms',
-				params: { LAYERS: 'topp:tasmania_roads', TILED: true },
-				serverType: 'geoserver',
-			}),
-			visible: roadsChecked,
-		})
-
-		waterLayerRef.current = new TileLayer({
-			source: new TileWMS({
-				url: 'http://localhost:8080/geoserver/wms',
-				params: { LAYERS: 'topp:tasmania_water_bodies', TILED: true },
-				serverType: 'geoserver',
-			}),
-			visible: waterChecked,
-		})
+		statesLayerRef.current = createWMSLayer('topp:states', statesChecked)
+		roadsLayerRef.current = createWMSLayer('topp:tasmania_roads', roadsChecked)
+		waterLayerRef.current = createWMSLayer(
+			'topp:tasmania_water_bodies',
+			waterChecked
+		)
 
 		const map = new Map({
-			target: mapRef.current,
+			target: mapContainerRef.current,
 			layers: [
 				osmLayer,
 				statesLayerRef.current,
@@ -64,7 +56,6 @@ const Map2 = () => {
 				zoom: 2,
 			}),
 		})
-		mapRef.current = map
 
 		return () => map.setTarget(null)
 	}, [])
@@ -73,23 +64,17 @@ const Map2 = () => {
 		if (statesLayerRef.current) {
 			statesLayerRef.current.setVisible(statesChecked)
 		}
-	}, [statesChecked])
-
-	useEffect(() => {
 		if (roadsLayerRef.current) {
 			roadsLayerRef.current.setVisible(roadsChecked)
 		}
-	}, [roadsChecked])
-
-	useEffect(() => {
 		if (waterLayerRef.current) {
 			waterLayerRef.current.setVisible(waterChecked)
 		}
-	}, [waterChecked])
+	}, [statesChecked, roadsChecked, waterChecked])
 
 	return (
-		<Box className='map2-container'>
-			<Box className='map2-menu'>
+		<div className='map2-container'>
+			<div className='map2-menu'>
 				<FormGroup row>
 					<FormControlLabel
 						control={
@@ -119,9 +104,9 @@ const Map2 = () => {
 						label='topp:tasmania_water_bodies'
 					/>
 				</FormGroup>
-			</Box>
-			<div ref={mapRef} className='map2'></div>
-		</Box>
+			</div>
+			<div ref={mapContainerRef} className='map2'></div>
+		</div>
 	)
 }
 

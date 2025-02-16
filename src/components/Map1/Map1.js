@@ -8,10 +8,25 @@ import { Button, FormGroup, FormControlLabel, Checkbox } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import './Map1.css'
 
+const createWMSLayer = (layerName, visible) => {
+	return new TileLayer({
+		source: new TileWMS({
+			url:
+				process.env.REACT_APP_GEOSERVER_URL ||
+				'http://localhost:8080/geoserver/wms',
+			params: { LAYERS: layerName, TILED: true },
+			serverType: 'geoserver',
+		}),
+		visible: visible,
+	})
+}
+
 const Map1 = () => {
 	const navigate = useNavigate()
 
+	const mapContainerRef = useRef(null)
 	const mapRef = useRef(null)
+
 	const statesLayerRef = useRef(null)
 	const roadsLayerRef = useRef(null)
 
@@ -23,26 +38,11 @@ const Map1 = () => {
 			source: new OSM(),
 		})
 
-		statesLayerRef.current = new TileLayer({
-			source: new TileWMS({
-				url: 'http://localhost:8080/geoserver/wms',
-				params: { LAYERS: 'topp:states', TILED: true },
-				serverType: 'geoserver',
-			}),
-			visible: statesChecked,
-		})
-
-		roadsLayerRef.current = new TileLayer({
-			source: new TileWMS({
-				url: 'http://localhost:8080/geoserver/wms',
-				params: { LAYERS: 'topp:tasmania_roads', TILED: true },
-				serverType: 'geoserver',
-			}),
-			visible: roadsChecked,
-		})
+		statesLayerRef.current = createWMSLayer('topp:states', statesChecked)
+		roadsLayerRef.current = createWMSLayer('topp:tasmania_roads', roadsChecked)
 
 		const map = new Map({
-			target: 'map1',
+			target: mapContainerRef.current,
 			layers: [osmLayer, statesLayerRef.current, roadsLayerRef.current],
 			view: new View({
 				center: [0, 0],
@@ -58,13 +58,10 @@ const Map1 = () => {
 		if (statesLayerRef.current) {
 			statesLayerRef.current.setVisible(statesChecked)
 		}
-	}, [statesChecked])
-
-	useEffect(() => {
 		if (roadsLayerRef.current) {
 			roadsLayerRef.current.setVisible(roadsChecked)
 		}
-	}, [roadsChecked])
+	}, [statesChecked, roadsChecked])
 
 	const handleLogin = () => {
 		navigate('/login')
@@ -102,7 +99,8 @@ const Map1 = () => {
 					Вход
 				</Button>
 			</div>
-			<div id='map1' className='map1'></div>
+
+			<div ref={mapContainerRef} className='map1'></div>
 		</div>
 	)
 }
