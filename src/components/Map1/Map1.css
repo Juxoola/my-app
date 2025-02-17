@@ -12,15 +12,12 @@
 	border-radius: 10px;
 	background-color: rgba(255, 255, 255, 0.2);
 	backdrop-filter: blur(8px);
-	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63) !important;
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63) ;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 }
 
-.map1-menu .MuiFormGroup-root {
-	flex-direction: column;
-}
 
 .map1 {
 	width: 100%;
@@ -29,56 +26,88 @@
 
 /* Стили для кнопок масштабирования OpenLayers */
 .map1-container .ol-zoom {
-	right: 20px !important;
-	left: auto !important;
-	top: 20px !important;
-	bottom: auto !important;
-	background: rgba(255, 255, 255, 0.205) !important;
-	padding: 6px !important;
-	border-radius: 10px !important;
+	right: 20px ;
+	left: auto ;
+	top: 20px ;
+	bottom: auto ;
+	background: rgba(255, 255, 255, 0.205) ;
+	padding: 6px ;
+	border-radius: 40px ;
 	backdrop-filter: blur(8px);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63) !important;
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63) ;
 }
 
 .map1-container .ol-zoom button {
-  background: rgba(255, 255, 255, 0) !important;
-	color: #000000 !important;
-	margin: 2px !important;
-	border-radius: 10px !important;
-	width: 25px !important;
-	height: 25px !important;
-	font-size: 18px !important;
-	outline: none !important;
-	border: none !important;
+	background: rgba(255, 255, 255, 0) ;
+	color: #000000 ;
+	margin: 2px ;
+	border-radius: 10px ;
+	width: 25px ;
+	height: 25px ;
+	font-size: 18px ;
+	outline: none ;
+	border: none ;
 }
 
 .map1-container .ol-zoom button:focus {
-	outline: none !important;
-	box-shadow: none !important;
+	outline: none ;
+	box-shadow: none ;
 }
 
 .map1-container .ol-zoom button:hover {
-	background-color: rgba(255, 255, 255, 0.815) !important;
+	background-color: rgba(255, 255, 255, 0.815) ;
 }
 
 /* Скрыть водяной знак OpenStreetMap */
 .ol-attribution {
-	display: none !important;
+	display: none ;
 }
 
 .login-button2 {
-	margin-top: 2px !important;
-	border-radius: 50px !important;
-	height: 40px !important;
-	width: 60% !important;
+	margin-top: 20px ;
+	border-radius: 50px ;
+	border: none ;
+	height: 40px ;
+	width: 60% ;
 	background: linear-gradient(to right, #9c27b0, #7b1fa2);
 	transition: all 0.5s ease;
-	/* font-weight: 600 !important; */
-	font-family: 'Segoe UI', 'Roboto', sans-serif !important;
-	/* font-size: 1.1rem !important; */
+	color: white;
+	font-family: 'Segoe UI', 'Roboto', sans-serif ;
 }
 
 .login-button2:hover {
 	background: linear-gradient(to right, #7b1fa2, #6a1b9a);
 	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+
+/*Сброс стиля чекбокса */
+.checkbox-group input[type='checkbox'] {
+	appearance: none;
+	width: 20px;
+	height: 20px;
+	border: 2px solid #7b1fa2;
+	border-radius: 4px;
+	position: relative;
+	margin-right: 10px;
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+/* Состояние выбранного чекбокса */
+.checkbox-group input[type='checkbox']:checked {
+	background-color: #7b1fa2;
+}
+
+/*Чекбокс галка */
+.checkbox-group input[type='checkbox']:checked::after {
+	content: '';
+	position: absolute;
+	left: 6px;
+	top: 2px;
+	width: 4px;
+	height: 8px;
+	border: solid #fff;
+	border-width: 0 2px 2px 0;
+	transform: rotate(45deg);
 }

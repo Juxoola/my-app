@@ -4,7 +4,6 @@ import { Map, View } from 'ol'
 import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import TileWMS from 'ol/source/TileWMS'
-import { Button, FormGroup, FormControlLabel, Checkbox } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import './Map1.css'
 
@@ -70,36 +69,28 @@ const Map1 = () => {
 	return (
 		<div className='map1-container'>
 			<div className='map1-menu'>
-				<FormGroup row>
-					<FormControlLabel
-						control={
-							<Checkbox
-								checked={statesChecked}
-								onChange={e => setStatesChecked(e.target.checked)}
-							/>
-						}
-						label='topp:states'
-					/>
-					<FormControlLabel
-						control={
-							<Checkbox
-								checked={roadsChecked}
-								onChange={e => setRoadsChecked(e.target.checked)}
-							/>
-						}
-						label='topp:tasmania_roads'
-					/>
-				</FormGroup>
-				<Button
-					variant='contained'
-					color='primary'
-					onClick={handleLogin}
-					className='login-button2'
-				>
+				<div className='checkbox-group'>
+					<label>
+						<input
+							type='checkbox'
+							checked={statesChecked}
+							onChange={e => setStatesChecked(e.target.checked)}
+						/>
+						<span>topp:states</span>
+					</label>
+					<label>
+						<input
+							type='checkbox'
+							checked={roadsChecked}
+							onChange={e => setRoadsChecked(e.target.checked)}
+						/>
+						<span>topp:tasmania_roads</span>
+					</label>
+				</div>
+				<button type='button' onClick={handleLogin} className='login-button2'>
 					Вход
-				</Button>
+				</button>
 			</div>
-
 			<div ref={mapContainerRef} className='map1'></div>
 		</div>
 	)

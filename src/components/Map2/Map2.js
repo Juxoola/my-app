@@ -5,7 +5,6 @@ import View from 'ol/View'
 import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import TileWMS from 'ol/source/TileWMS'
-import { FormGroup, FormControlLabel, Checkbox } from '@mui/material'
 import './Map2.css'
 
 const createWMSLayer = (layerName, visible) => {
@@ -26,10 +25,12 @@ const Map2 = () => {
 	const statesLayerRef = useRef(null)
 	const roadsLayerRef = useRef(null)
 	const waterLayerRef = useRef(null)
+	const worldLayerRef = useRef(null)
 
 	const [statesChecked, setStatesChecked] = useState(false)
 	const [roadsChecked, setRoadsChecked] = useState(false)
 	const [waterChecked, setWaterChecked] = useState(false)
+	const [worldChecked, setWorldChecked] = useState(false)
 
 	useEffect(() => {
 		const osmLayer = new TileLayer({
@@ -42,11 +43,13 @@ const Map2 = () => {
 			'topp:tasmania_water_bodies',
 			waterChecked
 		)
+		worldLayerRef.current = createWMSLayer('ne:world', worldChecked)
 
 		const map = new Map({
 			target: mapContainerRef.current,
 			layers: [
 				osmLayer,
+				worldLayerRef.current,
 				statesLayerRef.current,
 				roadsLayerRef.current,
 				waterLayerRef.current,
@@ -70,40 +73,48 @@ const Map2 = () => {
 		if (waterLayerRef.current) {
 			waterLayerRef.current.setVisible(waterChecked)
 		}
-	}, [statesChecked, roadsChecked, waterChecked])
+		if (worldLayerRef.current) {
+			worldLayerRef.current.setVisible(worldChecked)
+		}
+	}, [statesChecked, roadsChecked, waterChecked, worldChecked])
 
 	return (
 		<div className='map2-container'>
 			<div className='map2-menu'>
-				<FormGroup row>
-					<FormControlLabel
-						control={
-							<Checkbox
-								checked={statesChecked}
-								onChange={e => setStatesChecked(e.target.checked)}
-							/>
-						}
-						label='topp:states'
-					/>
-					<FormControlLabel
-						control={
-							<Checkbox
-								checked={roadsChecked}
-								onChange={e => setRoadsChecked(e.target.checked)}
-							/>
-						}
-						label='topp:tasmania_roads'
-					/>
-					<FormControlLabel
-						control={
-							<Checkbox
-								checked={waterChecked}
-								onChange={e => setWaterChecked(e.target.checked)}
-							/>
-						}
-						label='topp:tasmania_water_bodies'
-					/>
-				</FormGroup>
+				<div className='checkbox-group'>
+					<label>
+						<input
+							type='checkbox'
+							checked={statesChecked}
+							onChange={e => setStatesChecked(e.target.checked)}
+						/>
+						<span>topp:states</span>
+					</label>
+					<label>
+						<input
+							type='checkbox'
+							checked={roadsChecked}
+							onChange={e => setRoadsChecked(e.target.checked)}
+						/>
+						<span>topp:tasmania_roads</span>
+					</label>
+					<label>
+						<input
+							type='checkbox'
+							checked={waterChecked}
+							onChange={e => setWaterChecked(e.target.checked)}
+						/>
+						<span>topp:tasmania_water_bodies</span>
+					</label>
+					<label>
+						<input
+							type='checkbox'
+							checked={worldChecked}
+							onChange={e => setWorldChecked(e.target.checked)}
+						/>
+						<span>ne:world</span>
+					</label>
+				</div>
 			</div>
 			<div ref={mapContainerRef} className='map2'></div>
 		</div>

@@ -3,76 +3,85 @@
 	justify-content: center;
 	align-items: center;
 	height: 100vh;
-	background: linear-gradient(45deg, #4158d0, #c850c0, #ffcc70);
+	background: linear-gradient(45deg, #4158d0, #c850c0, #997b43);
 	text-align: center;
 }
 
 .login-paper {
-	background: rgba(255, 255, 255, 0.25) !important;
-	backdrop-filter: blur(15px) !important;
+	background: rgba(255, 255, 255, 0.25);
+	backdrop-filter: blur(15px);
 	padding: 30px;
+	height: 350px;
 	width: 500px;
-	border-radius: 35px !important;
-	border: 1px solid rgba(255, 255, 255, 0.212) !important;
-	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.445) !important;
+	border-radius: 35px;
+	border: 1px solid rgba(255, 255, 255, 0.212);
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.445);
 }
 
 .login-paper h1 {
 	color: white;
 	font-weight: 700;
 	font-family: 'Segoe UI', 'Roboto', sans-serif;
+	margin-bottom: 30px;
 }
 
-.login-input .MuiOutlinedInput-root {
-	border-radius: 18px;
+.login-form {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.input-group {
+	display: flex;
+	align-items: center;
 	background-color: #f5f5f569;
+	border-radius: 18px;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+	padding: 8px 12px;
 	transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.login-input .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+.input-group input {
 	border: none;
+	background: transparent;
+	outline: none;
+	width: 100%;
+	font-size: 1rem;
+	font-family: 'Segoe UI', 'Roboto', sans-serif;
+	color: rgba(0, 0, 0, 0.8);
 }
 
-.login-input
-	.MuiOutlinedInput-root.Mui-focused
-	.MuiOutlinedInput-notchedOutline {
-	border: none;
+.input-group input::placeholder {
+	color: rgba(0, 0, 0, 0.6);
+}
+
+.input-icon {
+	margin-right: 8px;
+	opacity: 0.6;
+	font-size: 1.2rem;
+}
+
+.error-text {
+	color: red;
+	font-size: 0.9rem;
 }
 
 .login-button {
-	margin-top: 20px !important;
-	border-radius: 50px !important;
-	height: 50px !important;
+	margin-top: 20px;
+	border-radius: 50px;
+	height: 50px;
 	width: 100%;
 	background: linear-gradient(to right, #9c27b0, #7b1fa2);
 	transition: all 0.5s ease;
-	font-weight: 600 !important;
-	font-family: 'Segoe UI', 'Roboto', sans-serif !important;
-	font-size: 1.1rem !important;
+	font-weight: 600;
+	font-family: 'Segoe UI', 'Roboto', sans-serif;
+	font-size: 1.1rem;
+	border: none;
+	color: white;
+	cursor: pointer;
 }
 
 .login-button:hover {
 	background: linear-gradient(to right, #7b1fa2, #6a1b9a);
 	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-}
-
-.login-input .MuiInputLabel-root {
-	margin-left: 32px;
-	opacity: 0.6;
-}
-
-.login-input .MuiInputLabel-root,
-.login-input .MuiInputLabel-root.Mui-focused {
-	color: rgba(0, 0, 0, 0.6) !important;
-}
-
-.login-input .MuiInputLabel-shrink {
-	margin-left: 0;
-	transform: translate(14px, -9px) scale(0.75);
-	color: rgba(0, 0, 0, 0.6) !important;
-}
-
-.login-input .MuiSvgIcon-root {
-	opacity: 0.6;
 }

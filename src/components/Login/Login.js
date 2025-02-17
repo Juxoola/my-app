@@ -1,16 +1,8 @@
 import React, { useState } from 'react'
-import {
-	TextField,
-	Button,
-	Paper,
-	Typography,
-	InputAdornment,
-} from '@mui/material'
-import EmailIcon from '@mui/icons-material/Email'
-import LockIcon from '@mui/icons-material/Lock'
 import { useNavigate } from 'react-router-dom'
 import './Login.css'
-
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 const Login = () => {
 	const navigate = useNavigate()
 	const [username, setUsername] = useState('')
@@ -30,64 +22,37 @@ const Login = () => {
 
 	return (
 		<div className='login-container'>
-			<Paper elevation={3} className='login-paper'>
-				<Typography variant='h5' component='h1' gutterBottom>
-					Вход в систему
-				</Typography>
-				<TextField
-					label='Логин'
-					variant='outlined'
-					fullWidth
-					margin='normal'
-					value={username}
-					onChange={e => setUsername(e.target.value)}
-					InputProps={{
-						startAdornment: (
-							<InputAdornment position='start'>
-								<EmailIcon />
-							</InputAdornment>
-						),
-					}}
-					InputLabelProps={{
-						shrink: !!username,
-					}}
-					className='login-input'
-				/>
-				<TextField
-					label='Пароль'
-					variant='outlined'
-					fullWidth
-					margin='normal'
-					type='password'
-					value={password}
-					onChange={e => setPassword(e.target.value)}
-					InputProps={{
-						startAdornment: (
-							<InputAdornment position='start'>
-								<LockIcon />
-							</InputAdornment>
-						),
-					}}
-					InputLabelProps={{
-						shrink: !!password,
-					}}
-					className='login-input'
-				/>
-				{error && (
-					<Typography variant='body2' color='error'>
-						{error}
-					</Typography>
-				)}
-				<Button
-					variant='contained'
-					color='primary'
-					onClick={handleLogin}
-					className='login-button'
-					fullWidth
-				>
-					Войти
-				</Button>
-			</Paper>
+			<div className='login-paper'>
+				<h1>Вход в систему</h1>
+				<div className='login-form'>
+					<div className='input-group'>
+						<span className='input-icon'>
+							<PersonOutlineIcon />
+						</span>
+						<input
+							type='text'
+							placeholder='Логин'
+							value={username}
+							onChange={e => setUsername(e.target.value)}
+						/>
+					</div>
+					<div className='input-group'>
+						<span className='input-icon'>
+							<LockOutlinedIcon />
+						</span>
+						<input
+							type='password'
+							placeholder='Пароль'
+							value={password}
+							onChange={e => setPassword(e.target.value)}
+						/>
+					</div>
+					{error && <div className='error-text'>{error}</div>}
+					<button type='button' className='login-button' onClick={handleLogin}>
+						Войти
+					</button>
+				</div>
+			</div>
 		</div>
 	)
 }

@@ -13,11 +13,6 @@
 	background-color: rgba(255, 255, 255, 0.2);
 	backdrop-filter: blur(8px);
 	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63) !important;
-  
-}
-
-.map2-menu .MuiFormGroup-root {
-	flex-direction: column;
 }
 
 .map2 {
@@ -27,40 +22,86 @@
 
 /* Стили для кнопок масштабирования OpenLayers */
 .map2-container .ol-zoom {
-	right: 20px !important;
-	left: auto !important;
-	top: 20px !important;
-	bottom: auto !important;
-	background: rgba(255, 255, 255, 0.205) !important;
-	padding: 6px !important;
-	border-radius: 10px !important;
+	right: 20px;
+	left: auto;
+	top: 20px;
+	bottom: auto;
+	background: rgba(255, 255, 255, 0.205);
+	padding: 6px;
+	border-radius: 10px;
 	backdrop-filter: blur(8px);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63) !important;
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63);
 }
 
 .map2-container .ol-zoom button {
-  background: rgba(255, 255, 255, 0) !important;
-	color: #000000 !important;
-	margin: 2px !important;
-	border-radius: 10px !important;
-	width: 25px !important;
-	height: 25px !important;
-	font-size: 18px !important;
-	outline: none !important;
-	border: none !important;
+	background: rgba(255, 255, 255, 0);
+	color: #000000;
+	margin: 2px;
+	border-radius: 10px;
+	width: 25px;
+	height: 25px;
+	font-size: 18px;
+	outline: none;
+	border: none;
 }
 
 .map2-container .ol-zoom button:focus {
-	outline: none !important;
-	box-shadow: none !important;
-  background: rgba(255, 255, 255, 0.205) !important;
+	outline: none;
+	box-shadow: none;
+	background: rgba(255, 255, 255, 0.205);
 }
 
 .map2-container .ol-zoom button:hover {
-	background-color: rgba(255, 255, 255, 0.815) !important;
+	background-color: rgba(255, 255, 255, 0.815);
 }
 
 /* Скрыть водяной знак OpenStreetMap */
 .ol-attribution {
-	display: none !important;
+	display: none;
+}
+
+/* Простая стилизация чекбоксов в блоке меню */
+.checkbox-group {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.checkbox-group label {
+	display: flex;
+	align-items: center;
+	font-size: 16px;
+	color: #333;
+	cursor: pointer;
+}
+
+/*Сброс стиля чекбокса */
+.checkbox-group input[type='checkbox'] {
+	appearance: none;
+	width: 20px;
+	height: 20px;
+	border: 2px solid #7b1fa2;
+	border-radius: 4px;
+	position: relative;
+	margin-right: 10px;
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+/* Состояние выбранного чекбокса */
+.checkbox-group input[type='checkbox']:checked {
+	background-color: #7b1fa2;
+}
+
+/*Чекбокс галка */
+.checkbox-group input[type='checkbox']:checked::after {
+	content: '';
+	position: absolute;
+	left: 6px;
+	top: 2px;
+	width: 4px;
+	height: 8px;
+	border: solid #fff;
+	border-width: 0 2px 2px 0;
+	transform: rotate(45deg);
 }
