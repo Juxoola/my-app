@@ -11,7 +11,6 @@ const createWMSLayer = (layerName, visible) => {
 	return new TileLayer({
 		source: new TileWMS({
 			url:
-				process.env.REACT_APP_GEOSERVER_URL ||
 				'http://localhost:8080/geoserver/wms',
 			params: { LAYERS: layerName, TILED: true },
 			serverType: 'geoserver',
