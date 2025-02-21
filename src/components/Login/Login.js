@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './Login.css'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+
 const Login = () => {
 	const navigate = useNavigate()
 	const [username, setUsername] = useState('')
@@ -12,7 +13,8 @@ const Login = () => {
 	const USERNAME = 'admin'
 	const PASSWORD = '123'
 
-	const handleLogin = () => {
+	const handleLogin = e => {
+		e.preventDefault()
 		if (username === USERNAME && password === PASSWORD) {
 			navigate('/map2')
 		} else {
@@ -24,7 +26,7 @@ const Login = () => {
 		<div className='login-container'>
 			<div className='login-paper'>
 				<h1>Вход в систему</h1>
-				<div className='login-form'>
+				<form className='login-form' onSubmit={handleLogin}>
 					<div className='input-group'>
 						<span className='input-icon'>
 							<PersonOutlineIcon />
@@ -48,10 +50,10 @@ const Login = () => {
 						/>
 					</div>
 					{error && <div className='error-text'>{error}</div>}
-					<button type='button' className='login-button' onClick={handleLogin}>
+					<button type='submit' className='login-button'>
 						Войти
 					</button>
-				</div>
+				</form>
 			</div>
 		</div>
 	)

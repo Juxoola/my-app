@@ -19,10 +19,11 @@
 }
 
 .login-paper h1 {
+	margin-top: 0;
 	color: white;
 	font-weight: 700;
 	font-family: 'Segoe UI', 'Roboto', sans-serif;
-	margin-bottom: 30px;
+	margin-bottom: 50px;
 }
 
 .login-form {
