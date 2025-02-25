@@ -14,7 +14,10 @@ import { Style, Circle as CircleStyle, Fill, Stroke, Text } from 'ol/style'
 import { useNavigate } from 'react-router-dom'
 import AddLocationIcon from '@mui/icons-material/AddLocation'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import StraightenIcon from '@mui/icons-material/Straighten'
 import './Map1.css'
+import { getDistance } from 'geolib'
+import { Permutation } from 'js-combinatorics'
 
 const createWMSLayer = (layerName, visible) => {
 	return new TileLayer({
@@ -37,16 +40,23 @@ const Map1 = () => {
 	const roadsLayerRef = useRef(null)
 	const pointsLayerRef = useRef(null)
 	const manualPointsLayerRef = useRef(null)
+	const routeLayerRef = useRef(null)
 
 	const [statesChecked, setStatesChecked] = useState(false)
 	const [roadsChecked, setRoadsChecked] = useState(false)
 	const [pointsChecked, setPointsChecked] = useState(true)
 	const [manualPointsChecked, setManualPointsChecked] = useState(true)
 
-	// Режим добавления точки
 	const [isAddingPoint, setIsAddingPoint] = useState(false)
-	// Режим удаления точки
 	const [isDeletingPoint, setIsDeletingPoint] = useState(false)
+
+	const [isSelectingAirports, setIsSelectingAirports] = useState(false)
+	const [selectedAirports, setSelectedAirports] = useState([])
+	const [routeDistance, setRouteDistance] = useState(null)
+
+	const handleLogin = () => {
+		navigate('/login')
+	}
 
 	useEffect(() => {
 		const osmLayer = new TileLayer({
@@ -66,6 +76,11 @@ const Map1 = () => {
 			visible: manualPointsChecked,
 		})
 
+		routeLayerRef.current = new VectorLayer({
+			source: new VectorSource(),
+			visible: pointsChecked,
+		})
+
 		const map = new Map({
 			target: mapContainerRef.current,
 			layers: [
@@ -74,6 +89,7 @@ const Map1 = () => {
 				roadsLayerRef.current,
 				pointsLayerRef.current,
 				manualPointsLayerRef.current,
+				routeLayerRef.current,
 			],
 			view: new View({
 				center: [0, 0],
@@ -98,9 +114,12 @@ const Map1 = () => {
 		if (manualPointsLayerRef.current) {
 			manualPointsLayerRef.current.setVisible(manualPointsChecked)
 		}
+		if (routeLayerRef.current) {
+			routeLayerRef.current.setVisible(pointsChecked)
+		}
 	}, [statesChecked, roadsChecked, pointsChecked, manualPointsChecked])
 
-	// Загружаем данные о рейсах 
+	// Загружаем данные о рейсах
 	useEffect(() => {
 		if (!mapRef.current) return
 
@@ -335,8 +354,190 @@ const Map1 = () => {
 		}
 	}, [isDeletingPoint])
 
-	const handleLogin = () => {
-		navigate('/login')
+	//Выделение точек
+	useEffect(() => {
+		if (!isSelectingAirports || !mapRef.current) return
+
+		const handleAirportSelection = event => {
+			let clickedFeature = null
+			let max = 4
+
+			mapRef.current.forEachFeatureAtPixel(event.pixel, feature => {
+				if (
+					pointsLayerRef.current &&
+					pointsLayerRef.current.getSource().hasFeature(feature)
+				) {
+					clickedFeature = feature
+					return true
+				}
+			})
+
+			if (clickedFeature) {
+				const alreadyIndex = selectedAirports.indexOf(clickedFeature)
+				if (alreadyIndex >= 0) {
+					unhighlightFeature(clickedFeature)
+					const newSelected = selectedAirports.filter(f => f !== clickedFeature)
+					setSelectedAirports(newSelected)
+				} else {
+					if (selectedAirports.length < max) {
+						highlightFeature(clickedFeature)
+						setSelectedAirports([...selectedAirports, clickedFeature])
+					} else {
+						console.log(
+							`Максимальное количество выбранных точек ${max} уже достигнуто`
+						)
+					}
+				}
+			}
+		}
+
+		mapRef.current.on('click', handleAirportSelection)
+		return () => {
+			if (mapRef.current) {
+				mapRef.current.un('click', handleAirportSelection)
+			}
+		}
+	}, [isSelectingAirports, selectedAirports])
+
+	//Построение линий и вычисление расстояния
+	useEffect(() => {
+		if (selectedAirports.length >= 2) {
+			const points = selectedAirports.map(feature =>
+				feature.getGeometry().getCoordinates()
+			)
+			const pointsLonLat = points.map(coord => toLonLat(coord))
+			const n = pointsLonLat.length
+			let bestOrder = []
+			let bestDistance = Infinity
+
+			if (n === 2) {
+				bestOrder = [0, 1]
+				bestDistance = calculateDistance(pointsLonLat[0], pointsLonLat[1])
+			} else {
+				const index = []
+				for (let i = 1; i < n - 1; i++) {
+					index.push(i)
+				}
+				const permutations = new Permutation(index).toArray()
+				for (const perm of permutations) {
+					const routeOrder = [0, ...perm, n - 1]
+					let distance = 0
+					for (let i = 0; i < routeOrder.length - 1; i++) {
+						distance += calculateDistance(
+							pointsLonLat[routeOrder[i]],
+							pointsLonLat[routeOrder[i + 1]]
+						)
+					}
+					if (distance < bestDistance) {
+						bestDistance = distance
+						bestOrder = routeOrder
+					}
+				}
+			}
+			const routeCoords = bestOrder.map(idx => points[idx])
+
+			if (routeLayerRef.current) {
+				const source = routeLayerRef.current.getSource()
+				source.clear()
+				const routeFeature = new Feature({
+					geometry: new LineString(routeCoords),
+				})
+				routeFeature.setStyle(
+					new Style({
+						stroke: new Stroke({
+							color: 'orange',
+							width: 3,
+						}),
+					})
+				)
+				source.addFeature(routeFeature)
+
+				// Точка начала
+				const startFeature = new Feature({
+					geometry: new Point(routeCoords[0]),
+				})
+				startFeature.setStyle(
+					new Style({
+						image: new CircleStyle({
+							radius: 8,
+							fill: new Fill({ color: 'green' }),
+							stroke: new Stroke({ color: 'black', width: 2 }),
+						}),
+					})
+				)
+				source.addFeature(startFeature)
+
+				// Точка конца
+				const endFeature = new Feature({
+					geometry: new Point(routeCoords[routeCoords.length - 1]),
+				})
+				endFeature.setStyle(
+					new Style({
+						image: new CircleStyle({
+							radius: 8,
+							fill: new Fill({ color: 'purple' }),
+							stroke: new Stroke({ color: 'black', width: 2 }),
+						}),
+					})
+				)
+				source.addFeature(endFeature)
+			}
+			setRouteDistance(bestDistance)
+		} else {
+			if (routeLayerRef.current) {
+				routeLayerRef.current.getSource().clear()
+			}
+			setRouteDistance(null)
+		}
+	}, [selectedAirports])
+
+	const highlightFeature = feature => {
+		if (!feature.get('originalStyle')) {
+			feature.set('originalStyle', feature.getStyle())
+		}
+		feature.setStyle(
+			new Style({
+				image: new CircleStyle({
+					radius: 10,
+					fill: new Fill({ color: 'yellow' }),
+					stroke: new Stroke({ color: 'red', width: 2 }),
+				}),
+				text:
+					feature.getStyle() && feature.getStyle().getText
+						? feature.getStyle().getText()
+						: undefined,
+			})
+		)
+	}
+
+	const unhighlightFeature = feature => {
+		const originalStyle = feature.get('originalStyle')
+		if (originalStyle) {
+			feature.setStyle(originalStyle)
+			feature.set('originalStyle', null)
+		}
+	}
+
+	const calculateDistance = ([lon1, lat1], [lon2, lat2]) => {
+		const meters = getDistance(
+			{ latitude: lat1, longitude: lon1 },
+			{ latitude: lat2, longitude: lon2 }
+		)
+		return meters / 1000
+	}
+
+	const handleToggleSelectAirports = () => {
+		if (isSelectingAirports) {
+			selectedAirports.forEach(feature => {
+				unhighlightFeature(feature)
+			})
+			setSelectedAirports([])
+			if (routeLayerRef.current) {
+				routeLayerRef.current.getSource().clear()
+			}
+			setRouteDistance(null)
+		}
+		setIsSelectingAirports(!isSelectingAirports)
 	}
 
 	return (
@@ -400,6 +601,22 @@ const Map1 = () => {
 			>
 				<DeleteOutlineIcon fontSize='medium' />
 			</button>
+			<button
+				className={`select-airports-button ${
+					isSelectingAirports ? 'active' : ''
+				}`}
+				onClick={e => {
+					handleToggleSelectAirports()
+					e.currentTarget.blur()
+				}}
+			>
+				<StraightenIcon fontSize='medium' />
+			</button>
+			{routeDistance !== null && (
+				<div className='route-distance'>
+					Расстояние: {routeDistance.toFixed(2)} км
+				</div>
+			)}
 		</div>
 	)
 }

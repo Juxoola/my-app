@@ -1,9 +1,11 @@
 services:
   nodeapp:
     build: .
-    command: node Server/Server.js
     ports:
       - '3000:3000'
+      - '3001:3001'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     depends_on:
       - geoserver
     networks:
@@ -20,6 +22,7 @@ services:
 
 networks:
   mynetwork:
+    driver: 'bridge'
 
 volumes:
   geoserver_data:

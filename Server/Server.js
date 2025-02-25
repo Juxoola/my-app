@@ -10,6 +10,7 @@ app.use(express.json())
 
 const pool = new Pool({
 	user: 'postgres',
+	//host: 'host.docker.internal',
 	host: 'localhost',
 	database: 'demo',
 	password: '123321',
