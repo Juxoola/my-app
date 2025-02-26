@@ -77,7 +77,6 @@
 	cursor: pointer;
 }
 
-/*Сброс стиля чекбокса */
 .checkbox-group input[type='checkbox'] {
 	appearance: none;
 	width: 20px;
@@ -107,3 +106,117 @@
 	border-width: 0 2px 2px 0;
 	transform: rotate(45deg);
 }
+
+/* Стили для кнопки добавления точки*/
+.add-point-button {
+	backdrop-filter: blur(12px);
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63);
+	position: absolute;
+	top: 20px;
+	right: 70px;
+	z-index: 1500;
+	background: rgba(255, 255, 255, 0);
+	color: #000000;
+	margin: 2px;
+	border-radius: 30px;
+	width: 40px;
+	height: 40px;
+	outline: none;
+	border: none;
+	opacity: 1;
+	transition: background-color 0.2s ease;
+}
+
+.add-point-button:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+.add-point-button:hover {
+	background-color: rgba(255, 255, 255, 0.815);
+}
+
+.add-point-button.active {
+	opacity: 0.5;
+}
+
+/* Стили для кнопки удаления точки */
+.delete-point-button {
+	backdrop-filter: blur(12px);
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63);
+	position: absolute;
+	top: 20px;
+	right: 120px;
+	z-index: 1500;
+	background: rgba(255, 255, 255, 0);
+	color: #000000;
+	margin: 2px;
+	border-radius: 30px;
+	width: 40px;
+	height: 40px;
+	outline: none;
+	border: none;
+	opacity: 1;
+	transition: background-color 0.2s ease;
+}
+
+.delete-point-button:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+.delete-point-button:hover {
+	background-color: rgba(255, 255, 255, 0.815);
+}
+
+.delete-point-button.active {
+	opacity: 0.5;
+}
+
+/* Стили для кнопки выбора аэропортов */
+.select-airports-button {
+	backdrop-filter: blur(12px);
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63);
+	position: absolute;
+	top: 20px;
+	right: 170px;
+	z-index: 1500;
+	background: rgba(255, 255, 255, 0);
+	color: #000000;
+	margin: 2px;
+	border-radius: 30px;
+	width: 40px;
+	height: 40px;
+	outline: none;
+	border: none;
+	opacity: 1;
+	transition: background-color 0.2s ease;
+}
+
+.select-airports-button:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+.select-airports-button:hover {
+	background-color: rgba(255, 255, 255, 0.815);
+}
+
+.select-airports-button.active {
+	opacity: 0.5;
+}
+
+
+/* Стили для блока отображения расстояния маршрута */
+.route-distance {
+	position: absolute;
+	bottom: 20px;
+	left: 20px;
+	padding: 10px;
+	background: rgba(255, 255, 255, 0.9);
+	border-radius: 5px;
+	font-size: 14px;
+	color: #000;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
