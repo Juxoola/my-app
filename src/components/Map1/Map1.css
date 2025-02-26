@@ -184,7 +184,7 @@
 	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63);
 	position: absolute;
 	top: 20px;
-	right: 170px; 
+	right: 170px;
 	z-index: 1500;
 	background: rgba(255, 255, 255, 0);
 	color: #000000;
@@ -211,7 +211,6 @@
 	opacity: 0.5;
 }
 
-
 /* Стили для блока отображения расстояния маршрута */
 .route-distance {
 	position: absolute;
@@ -223,4 +222,37 @@
 	font-size: 14px;
 	color: #000;
 	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Стили для кнопки выбора полигона */
+.select-polygon-button {
+	backdrop-filter: blur(12px);
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.63);
+	position: absolute;
+	top: 20px;
+	right: 220px;
+	z-index: 1500;
+	background: rgba(255, 255, 255, 0);
+	color: #000000;
+	margin: 2px;
+	border-radius: 30px;
+	width: 40px;
+	height: 40px;
+	outline: none;
+	border: none;
+	opacity: 1;
+	transition: background-color 0.2s ease;
+}
+
+.select-polygon-button:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+.select-polygon-button:hover {
+	background-color: rgba(255, 255, 255, 0.815);
+}
+
+.select-polygon-button.active {
+	opacity: 0.5;
 }

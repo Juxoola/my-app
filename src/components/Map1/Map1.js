@@ -15,9 +15,11 @@ import { useNavigate } from 'react-router-dom'
 import AddLocationIcon from '@mui/icons-material/AddLocation'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import StraightenIcon from '@mui/icons-material/Straighten'
+import CropFreeIcon from '@mui/icons-material/CropFree'
 import './Map1.css'
 import { getDistance } from 'geolib'
 import { Permutation } from 'js-combinatorics'
+import { Polygon } from 'ol/geom'
 
 const createWMSLayer = (layerName, visible) => {
 	return new TileLayer({
@@ -41,6 +43,7 @@ const Map1 = () => {
 	const pointsLayerRef = useRef(null)
 	const manualPointsLayerRef = useRef(null)
 	const routeLayerRef = useRef(null)
+	const polygonLayerRef = useRef(null)
 
 	const [statesChecked, setStatesChecked] = useState(false)
 	const [roadsChecked, setRoadsChecked] = useState(false)
@@ -53,6 +56,9 @@ const Map1 = () => {
 	const [isSelectingAirports, setIsSelectingAirports] = useState(false)
 	const [selectedAirports, setSelectedAirports] = useState([])
 	const [routeDistance, setRouteDistance] = useState(null)
+
+	const [isSelectingPolygon, setIsSelectingPolygon] = useState(false)
+	const [polygonPoints, setPolygonPoints] = useState([])
 
 	const handleLogin = () => {
 		navigate('/login')
@@ -81,6 +87,11 @@ const Map1 = () => {
 			visible: pointsChecked,
 		})
 
+		polygonLayerRef.current = new VectorLayer({
+			source: new VectorSource(),
+			visible: true,
+		})
+
 		const map = new Map({
 			target: mapContainerRef.current,
 			layers: [
@@ -90,6 +101,7 @@ const Map1 = () => {
 				pointsLayerRef.current,
 				manualPointsLayerRef.current,
 				routeLayerRef.current,
+				polygonLayerRef.current,
 			],
 			view: new View({
 				center: [0, 0],
@@ -540,6 +552,63 @@ const Map1 = () => {
 		setIsSelectingAirports(!isSelectingAirports)
 	}
 
+
+	//Режим выбора полигона
+
+	const handleToggleSelectPolygon = () => {
+		if (isSelectingPolygon) {
+			setPolygonPoints([])
+			if (polygonLayerRef.current) {
+				polygonLayerRef.current.getSource().clear()
+			}
+		}
+		setIsSelectingPolygon(!isSelectingPolygon)
+	}
+
+	useEffect(() => {
+		if (!isSelectingPolygon || !mapRef.current) return
+
+		const handleMapClick = event => {
+			const coordinate = event.coordinate
+			const lonLatCoord = toLonLat(coordinate)
+
+			setPolygonPoints(prev => [...prev, coordinate])
+
+			if (polygonPoints.length >= 2) {
+				const polygonFeature = new Feature({
+					geometry: new Polygon([[...polygonPoints, coordinate]]),
+				})
+
+				polygonFeature.setStyle(
+					new Style({
+						stroke: new Stroke({
+							color: 'blue',
+							width: 2,
+						}),
+						fill: new Fill({
+							color: 'rgba(0, 0, 255, 0.2)',
+						}),
+					})
+				)
+
+				if (polygonLayerRef.current) {
+					polygonLayerRef.current.getSource().clear()
+					polygonLayerRef.current.getSource().addFeature(polygonFeature)
+				}
+
+				console.log('Полигон создан из точек:', polygonPoints)
+			}
+		}
+
+		mapRef.current.on('click', handleMapClick)
+		return () => {
+			if (mapRef.current) {
+				mapRef.current.un('click', handleMapClick)
+			}
+		}
+	}, [isSelectingPolygon, polygonPoints])
+
+
 	return (
 		<div className='map1-container'>
 			<div className='map1-menu'>
@@ -611,6 +680,17 @@ const Map1 = () => {
 				}}
 			>
 				<StraightenIcon fontSize='medium' />
+			</button>
+			<button
+				className={`select-polygon-button ${
+					isSelectingPolygon ? 'active' : ''
+				}`}
+				onClick={e => {
+					handleToggleSelectPolygon()
+					e.currentTarget.blur()
+				}}
+			>
+				<CropFreeIcon fontSize='medium' />
 			</button>
 			{routeDistance !== null && (
 				<div className='route-distance'>
