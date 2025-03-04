@@ -256,3 +256,65 @@
 .select-polygon-button.active {
 	opacity: 0.5;
 }
+
+.save-menu {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: 30px;
+	background: #ffffff;
+	border-radius: 12px;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+	z-index: 2000;
+	max-width: 480px;
+	width: 90%;
+	font-family: 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.save-menu h3 {
+	margin-top: 0;
+	margin-bottom: 20px;
+	text-align: center;
+	color: #333;
+}
+
+.save-menu label {
+	display: block;
+	font-size: 16px;
+	margin-bottom: 10px;
+	color: #555;
+}
+
+.save-menu .buttons {
+	display: flex;
+	justify-content: space-around;
+	margin-top: 20px;
+}
+
+.save-menu button {
+	padding: 10px 20px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 16px;
+	transition: background-color 0.2s ease;
+}
+
+.save-menu button:first-child {
+	background: #7b1fa2;
+	color: #fff;
+}
+
+.save-menu button:first-child:hover {
+	background: #6a1b9a;
+}
+
+.save-menu button:last-child {
+	background: #ddd;
+	color: #333;
+}
+
+.save-menu button:last-child:hover {
+	background: #ccc;
+}

@@ -20,6 +20,8 @@ import './Map1.css'
 import { getDistance } from 'geolib'
 import { Permutation } from 'js-combinatorics'
 import { Polygon } from 'ol/geom'
+import DoubleClickZoom from 'ol/interaction/DoubleClickZoom'
+import UTIF from 'utif'
 
 const createWMSLayer = (layerName, visible) => {
 	return new TileLayer({
@@ -27,6 +29,7 @@ const createWMSLayer = (layerName, visible) => {
 			url: 'http://localhost:8080/geoserver/wms',
 			params: { LAYERS: layerName, TILED: true },
 			serverType: 'geoserver',
+			crossOrigin: 'anonymous',
 		}),
 		visible: visible,
 	})
@@ -60,13 +63,28 @@ const Map1 = () => {
 	const [isSelectingPolygon, setIsSelectingPolygon] = useState(false)
 	const [polygonPoints, setPolygonPoints] = useState([])
 
+	const [isShowingSaveMenu, setIsShowingSaveMenu] = useState(false)
+	const [saveLayerOptions, setSaveLayerOptions] = useState({
+		osm: true,
+		states: true,
+		roads: true,
+		airports: true,
+		manual: true,
+		route: true,
+		polygon: true,
+	})
+
+	const clickTimeoutRef = useRef(null)
+
 	const handleLogin = () => {
 		navigate('/login')
 	}
 
 	useEffect(() => {
 		const osmLayer = new TileLayer({
-			source: new OSM(),
+			source: new OSM({
+				crossOrigin: 'anonymous',
+			}),
 		})
 
 		statesLayerRef.current = createWMSLayer('topp:states', statesChecked)
@@ -109,6 +127,12 @@ const Map1 = () => {
 			}),
 		})
 		mapRef.current = map
+
+		map.getInteractions().forEach(interaction => {
+			if (interaction instanceof DoubleClickZoom) {
+				map.removeInteraction(interaction)
+			}
+		})
 
 		return () => map.setTarget(null)
 	}, [])
@@ -372,7 +396,7 @@ const Map1 = () => {
 
 		const handleAirportSelection = event => {
 			let clickedFeature = null
-			let max = 4
+			let max = 5
 
 			mapRef.current.forEachFeatureAtPixel(event.pixel, feature => {
 				if (
@@ -552,62 +576,199 @@ const Map1 = () => {
 		setIsSelectingAirports(!isSelectingAirports)
 	}
 
-
-	//Режим выбора полигона
-
-	const handleToggleSelectPolygon = () => {
-		if (isSelectingPolygon) {
-			setPolygonPoints([])
-			if (polygonLayerRef.current) {
-				polygonLayerRef.current.getSource().clear()
-			}
-		}
-		setIsSelectingPolygon(!isSelectingPolygon)
-	}
-
 	useEffect(() => {
 		if (!isSelectingPolygon || !mapRef.current) return
 
 		const handleMapClick = event => {
-			const coordinate = event.coordinate
-			const lonLatCoord = toLonLat(coordinate)
-
-			setPolygonPoints(prev => [...prev, coordinate])
-
-			if (polygonPoints.length >= 2) {
-				const polygonFeature = new Feature({
-					geometry: new Polygon([[...polygonPoints, coordinate]]),
-				})
-
-				polygonFeature.setStyle(
-					new Style({
-						stroke: new Stroke({
-							color: 'blue',
-							width: 2,
-						}),
-						fill: new Fill({
-							color: 'rgba(0, 0, 255, 0.2)',
-						}),
-					})
-				)
-
-				if (polygonLayerRef.current) {
-					polygonLayerRef.current.getSource().clear()
-					polygonLayerRef.current.getSource().addFeature(polygonFeature)
-				}
-
-				console.log('Полигон создан из точек:', polygonPoints)
+			if (clickTimeoutRef.current !== null) {
+				clearTimeout(clickTimeoutRef.current)
 			}
+			clickTimeoutRef.current = setTimeout(() => {
+				const coordinate = event.coordinate
+				setPolygonPoints(prev => {
+					const newPoints = [...prev, coordinate]
+					if (newPoints.length >= 3) {
+						const polygonFeature = new Feature({
+							geometry: new Polygon([newPoints]),
+						})
+						polygonFeature.setStyle(
+							new Style({
+								stroke: new Stroke({
+									color: 'blue',
+									width: 2,
+								}),
+								fill: new Fill({
+									color: 'rgba(0, 0, 255, 0.2)',
+								}),
+							})
+						)
+						if (polygonLayerRef.current) {
+							polygonLayerRef.current.getSource().clear()
+							polygonLayerRef.current.getSource().addFeature(polygonFeature)
+						}
+					}
+					return newPoints
+				})
+				clickTimeoutRef.current = null
+			}, 200)
 		}
 
 		mapRef.current.on('click', handleMapClick)
 		return () => {
-			if (mapRef.current) {
-				mapRef.current.un('click', handleMapClick)
+			if (clickTimeoutRef.current !== null) {
+				clearTimeout(clickTimeoutRef.current)
 			}
+			mapRef.current.un('click', handleMapClick)
+		}
+	}, [isSelectingPolygon])
+
+	useEffect(() => {
+		if (!isSelectingPolygon || !mapRef.current) return
+
+		const handlePolygonDoubleClick = event => {
+			event.preventDefault()
+			event.stopPropagation()
+			if (clickTimeoutRef.current !== null) {
+				clearTimeout(clickTimeoutRef.current)
+				clickTimeoutRef.current = null
+			}
+			if (polygonPoints.length >= 3) {
+				setIsShowingSaveMenu(true)
+			}
+		}
+
+		mapRef.current.on('dblclick', handlePolygonDoubleClick)
+		return () => {
+			mapRef.current.un('dblclick', handlePolygonDoubleClick)
 		}
 	}, [isSelectingPolygon, polygonPoints])
 
+	const handleSave = () => {
+		if (!mapRef.current) return
+
+		const originalVisibility = {
+			osm: mapRef.current.getLayers().item(0).getVisible(),
+			states: statesLayerRef.current.getVisible(),
+			roads: roadsLayerRef.current.getVisible(),
+			airports: pointsLayerRef.current.getVisible(),
+			manual: manualPointsLayerRef.current.getVisible(),
+			route: routeLayerRef.current.getVisible(),
+			polygon: polygonLayerRef.current.getVisible(),
+		}
+
+		mapRef.current.getLayers().item(0).setVisible(saveLayerOptions.osm)
+		statesLayerRef.current.setVisible(saveLayerOptions.states)
+		roadsLayerRef.current.setVisible(saveLayerOptions.roads)
+		pointsLayerRef.current.setVisible(saveLayerOptions.airports)
+		manualPointsLayerRef.current.setVisible(saveLayerOptions.manual)
+		routeLayerRef.current.setVisible(saveLayerOptions.route)
+		polygonLayerRef.current.setVisible(saveLayerOptions.polygon)
+
+		mapRef.current.renderSync()
+
+		let renderHandled = false
+		const processRenderComplete = () => {
+			if (renderHandled) return
+			renderHandled = true
+
+			const mapSize = mapRef.current.getSize()
+			const mapViewport = mapRef.current.getViewport()
+			const canvases = mapViewport.querySelectorAll('canvas')
+			const compositeCanvas = document.createElement('canvas')
+			compositeCanvas.width = mapSize[0]
+			compositeCanvas.height = mapSize[1]
+			const compositeCtx = compositeCanvas.getContext('2d')
+
+			canvases.forEach(canvas => {
+				if (canvas.width > 0) {
+					const opacity = canvas.parentNode.style.opacity
+					compositeCtx.globalAlpha = opacity === '' ? 1 : Number(opacity)
+					compositeCtx.drawImage(canvas, 0, 0)
+				}
+			})
+
+			const pixelCoords = polygonPoints.map(coord =>
+				mapRef.current.getPixelFromCoordinate(coord)
+			)
+			const xs = pixelCoords.map(p => p[0])
+			const ys = pixelCoords.map(p => p[1])
+			const minX = Math.min(...xs)
+			const minY = Math.min(...ys)
+			const maxX = Math.max(...xs)
+			const maxY = Math.max(...ys)
+			const width = maxX - minX
+			const height = maxY - minY
+
+			const clippedCanvas = document.createElement('canvas')
+			clippedCanvas.width = width
+			clippedCanvas.height = height
+			const clippedCtx = clippedCanvas.getContext('2d')
+
+			clippedCtx.beginPath()
+			clippedCtx.moveTo(pixelCoords[0][0] - minX, pixelCoords[0][1] - minY)
+			for (let i = 1; i < pixelCoords.length; i++) {
+				clippedCtx.lineTo(pixelCoords[i][0] - minX, pixelCoords[i][1] - minY)
+			}
+			clippedCtx.closePath()
+			clippedCtx.clip()
+
+			clippedCtx.drawImage(
+				compositeCanvas,
+				minX,
+				minY,
+				width,
+				height,
+				0,
+				0,
+				width,
+				height
+			)
+
+			//const imageDataUrl = clippedCanvas.toDataURL('image/png')
+			const imageData = clippedCtx.getImageData(0, 0, width, height)
+			const tiffBuffer = UTIF.encodeImage(imageData.data, width, height)
+			const tiffBlob = new Blob([tiffBuffer], { type: 'image/tiff' })
+			const link = document.createElement('a')
+			// link.href = imageDataUrl
+			// link.download = 'map_capture.png'
+
+			link.href = URL.createObjectURL(tiffBlob)
+			link.download = 'map_capture.tiff'
+			link.click()
+
+			// Сохранение координат полигона в текстовый файл (долгота/широта)
+			const coordsText = JSON.stringify(
+				polygonPoints.map(coord => toLonLat(coord)),
+				null,
+				2
+			)
+			const blob = new Blob([coordsText], { type: 'text/plain' })
+			const textUrl = URL.createObjectURL(blob)
+			const link2 = document.createElement('a')
+			link2.href = textUrl
+			link2.download = 'polygon_coordinates.txt'
+			link2.click()
+
+			mapRef.current.getLayers().item(0).setVisible(originalVisibility.osm)
+			statesLayerRef.current.setVisible(originalVisibility.states)
+			roadsLayerRef.current.setVisible(originalVisibility.roads)
+			pointsLayerRef.current.setVisible(originalVisibility.airports)
+			manualPointsLayerRef.current.setVisible(originalVisibility.manual)
+			routeLayerRef.current.setVisible(originalVisibility.route)
+			polygonLayerRef.current.setVisible(originalVisibility.polygon)
+
+			setIsShowingSaveMenu(false)
+		}
+
+		// Слушатель события рендера
+		mapRef.current.once('rendercomplete', processRenderComplete)
+
+		setTimeout(() => {
+			if (!renderHandled) {
+				processRenderComplete()
+			}
+		}, 500)
+	}
 
 	return (
 		<div className='map1-container'>
@@ -675,7 +836,15 @@ const Map1 = () => {
 					isSelectingAirports ? 'active' : ''
 				}`}
 				onClick={e => {
-					handleToggleSelectAirports()
+					selectedAirports.forEach(feature => {
+						unhighlightFeature(feature)
+					})
+					setSelectedAirports([])
+					if (routeLayerRef.current) {
+						routeLayerRef.current.getSource().clear()
+					}
+					setRouteDistance(null)
+					setIsSelectingAirports(!isSelectingAirports)
 					e.currentTarget.blur()
 				}}
 			>
@@ -686,7 +855,13 @@ const Map1 = () => {
 					isSelectingPolygon ? 'active' : ''
 				}`}
 				onClick={e => {
-					handleToggleSelectPolygon()
+					if (isSelectingPolygon) {
+						setPolygonPoints([])
+						if (polygonLayerRef.current) {
+							polygonLayerRef.current.getSource().clear()
+						}
+					}
+					setIsSelectingPolygon(!isSelectingPolygon)
 					e.currentTarget.blur()
 				}}
 			>
@@ -695,6 +870,110 @@ const Map1 = () => {
 			{routeDistance !== null && (
 				<div className='route-distance'>
 					Расстояние: {routeDistance.toFixed(2)} км
+				</div>
+			)}
+
+			{isShowingSaveMenu && (
+				<div className='save-menu'>
+					<h3>Сохранить область</h3>
+					<p>Выберите слои для сохранения:</p>
+					<div>
+						<label>
+							<input
+								type='checkbox'
+								checked={saveLayerOptions.osm}
+								onChange={e =>
+									setSaveLayerOptions({
+										...saveLayerOptions,
+										osm: e.target.checked,
+									})
+								}
+							/>
+							Base Map (OSM)
+						</label>
+						<label>
+							<input
+								type='checkbox'
+								checked={saveLayerOptions.states}
+								onChange={e =>
+									setSaveLayerOptions({
+										...saveLayerOptions,
+										states: e.target.checked,
+									})
+								}
+							/>
+							topp:states
+						</label>
+						<label>
+							<input
+								type='checkbox'
+								checked={saveLayerOptions.roads}
+								onChange={e =>
+									setSaveLayerOptions({
+										...saveLayerOptions,
+										roads: e.target.checked,
+									})
+								}
+							/>
+							topp:tasmania_roads
+						</label>
+						<label>
+							<input
+								type='checkbox'
+								checked={saveLayerOptions.airports}
+								onChange={e =>
+									setSaveLayerOptions({
+										...saveLayerOptions,
+										airports: e.target.checked,
+									})
+								}
+							/>
+							Аэропорты
+						</label>
+						<label>
+							<input
+								type='checkbox'
+								checked={saveLayerOptions.manual}
+								onChange={e =>
+									setSaveLayerOptions({
+										...saveLayerOptions,
+										manual: e.target.checked,
+									})
+								}
+							/>
+							Точки
+						</label>
+						<label>
+							<input
+								type='checkbox'
+								checked={saveLayerOptions.route}
+								onChange={e =>
+									setSaveLayerOptions({
+										...saveLayerOptions,
+										route: e.target.checked,
+									})
+								}
+							/>
+							Маршрут
+						</label>
+						<label>
+							<input
+								type='checkbox'
+								checked={saveLayerOptions.polygon}
+								onChange={e =>
+									setSaveLayerOptions({
+										...saveLayerOptions,
+										polygon: e.target.checked,
+									})
+								}
+							/>
+							Полигон
+						</label>
+					</div>
+					<div className='buttons'>
+						<button onClick={handleSave}>Сохранить</button>
+						<button onClick={() => setIsShowingSaveMenu(false)}>Отмена</button>
+					</div>
 				</div>
 			)}
 		</div>
