@@ -8,6 +8,7 @@ services:
       - 'host.docker.internal:host-gateway'
     depends_on:
       - geoserver
+      - postgres
     networks:
       - mynetwork
 
@@ -22,9 +23,24 @@ services:
     volumes:
       - geoserver_data:/opt/geoserver/data_dir
 
+  postgres:
+    image: postgres:17
+    restart: always
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: '123321'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
+    networks:
+      - mynetwork
+
 networks:
   mynetwork:
     driver: 'bridge'
 
 volumes:
   geoserver_data:
+  postgres_data:
