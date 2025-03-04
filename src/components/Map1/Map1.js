@@ -576,6 +576,7 @@ const Map1 = () => {
 		setIsSelectingAirports(!isSelectingAirports)
 	}
 
+	//Выделение полигона
 	useEffect(() => {
 		if (!isSelectingPolygon || !mapRef.current) return
 
@@ -643,37 +644,79 @@ const Map1 = () => {
 		}
 	}, [isSelectingPolygon, polygonPoints])
 
+	const cloneVectorSource = source => {
+		const newSource = new VectorSource()
+		source.getFeatures().forEach(feature => {
+			newSource.addFeature(feature.clone())
+		})
+		return newSource
+	}
+
 	const handleSave = () => {
 		if (!mapRef.current) return
 
-		const originalVisibility = {
-			osm: mapRef.current.getLayers().item(0).getVisible(),
-			states: statesLayerRef.current.getVisible(),
-			roads: roadsLayerRef.current.getVisible(),
-			airports: pointsLayerRef.current.getVisible(),
-			manual: manualPointsLayerRef.current.getVisible(),
-			route: routeLayerRef.current.getVisible(),
-			polygon: polygonLayerRef.current.getVisible(),
-		}
+		const mapSize = mapRef.current.getSize()
 
-		mapRef.current.getLayers().item(0).setVisible(saveLayerOptions.osm)
-		statesLayerRef.current.setVisible(saveLayerOptions.states)
-		roadsLayerRef.current.setVisible(saveLayerOptions.roads)
-		pointsLayerRef.current.setVisible(saveLayerOptions.airports)
-		manualPointsLayerRef.current.setVisible(saveLayerOptions.manual)
-		routeLayerRef.current.setVisible(saveLayerOptions.route)
-		polygonLayerRef.current.setVisible(saveLayerOptions.polygon)
+		const tempContainer = document.createElement('div')
+		tempContainer.style.position = 'absolute'
+		tempContainer.style.top = '-10000px'
+		tempContainer.style.left = '-10000px'
+		tempContainer.style.width = mapSize[0] + 'px'
+		tempContainer.style.height = mapSize[1] + 'px'
+		document.body.appendChild(tempContainer)
 
-		mapRef.current.renderSync()
+		const tempOsmLayer = new TileLayer({
+			source: new OSM({ crossOrigin: 'anonymous' }),
+			visible: saveLayerOptions.osm,
+		})
+		const tempStatesLayer = createWMSLayer(
+			'topp:states',
+			saveLayerOptions.states
+		)
+		const tempRoadsLayer = createWMSLayer(
+			'topp:tasmania_roads',
+			saveLayerOptions.roads
+		)
 
-		let renderHandled = false
-		const processRenderComplete = () => {
-			if (renderHandled) return
-			renderHandled = true
+		const tempAirportsLayer = new VectorLayer({
+			source: cloneVectorSource(pointsLayerRef.current.getSource()),
+			visible: saveLayerOptions.airports,
+		})
+		const tempManualLayer = new VectorLayer({
+			source: cloneVectorSource(manualPointsLayerRef.current.getSource()),
+			visible: saveLayerOptions.manual,
+		})
+		const tempRouteLayer = new VectorLayer({
+			source: cloneVectorSource(routeLayerRef.current.getSource()),
+			visible: saveLayerOptions.route,
+		})
+		const tempPolygonLayer = new VectorLayer({
+			source: cloneVectorSource(polygonLayerRef.current.getSource()),
+			visible: saveLayerOptions.polygon,
+		})
 
-			const mapSize = mapRef.current.getSize()
-			const mapViewport = mapRef.current.getViewport()
-			const canvases = mapViewport.querySelectorAll('canvas')
+		// Временная карта для сохранения
+		const tempMap = new Map({
+			target: tempContainer,
+			layers: [
+				tempOsmLayer,
+				tempStatesLayer,
+				tempRoadsLayer,
+				tempAirportsLayer,
+				tempManualLayer,
+				tempRouteLayer,
+				tempPolygonLayer,
+			],
+			view: new View({
+				center: mapRef.current.getView().getCenter(),
+				zoom: mapRef.current.getView().getZoom(),
+				projection: mapRef.current.getView().getProjection(),
+			}),
+		})
+
+		tempMap.once('rendercomplete', () => {
+			const tempViewport = tempMap.getViewport()
+			const canvases = tempViewport.querySelectorAll('canvas')
 			const compositeCanvas = document.createElement('canvas')
 			compositeCanvas.width = mapSize[0]
 			compositeCanvas.height = mapSize[1]
@@ -688,7 +731,7 @@ const Map1 = () => {
 			})
 
 			const pixelCoords = polygonPoints.map(coord =>
-				mapRef.current.getPixelFromCoordinate(coord)
+				tempMap.getPixelFromCoordinate(coord)
 			)
 			const xs = pixelCoords.map(p => p[0])
 			const ys = pixelCoords.map(p => p[1])
@@ -724,19 +767,14 @@ const Map1 = () => {
 				height
 			)
 
-			//const imageDataUrl = clippedCanvas.toDataURL('image/png')
 			const imageData = clippedCtx.getImageData(0, 0, width, height)
 			const tiffBuffer = UTIF.encodeImage(imageData.data, width, height)
 			const tiffBlob = new Blob([tiffBuffer], { type: 'image/tiff' })
 			const link = document.createElement('a')
-			// link.href = imageDataUrl
-			// link.download = 'map_capture.png'
-
 			link.href = URL.createObjectURL(tiffBlob)
 			link.download = 'map_capture.tiff'
 			link.click()
 
-			// Сохранение координат полигона в текстовый файл (долгота/широта)
 			const coordsText = JSON.stringify(
 				polygonPoints.map(coord => toLonLat(coord)),
 				null,
@@ -749,25 +787,12 @@ const Map1 = () => {
 			link2.download = 'polygon_coordinates.txt'
 			link2.click()
 
-			mapRef.current.getLayers().item(0).setVisible(originalVisibility.osm)
-			statesLayerRef.current.setVisible(originalVisibility.states)
-			roadsLayerRef.current.setVisible(originalVisibility.roads)
-			pointsLayerRef.current.setVisible(originalVisibility.airports)
-			manualPointsLayerRef.current.setVisible(originalVisibility.manual)
-			routeLayerRef.current.setVisible(originalVisibility.route)
-			polygonLayerRef.current.setVisible(originalVisibility.polygon)
+			tempMap.setTarget(null)
+			document.body.removeChild(tempContainer)
+		})
 
-			setIsShowingSaveMenu(false)
-		}
-
-		// Слушатель события рендера
-		mapRef.current.once('rendercomplete', processRenderComplete)
-
-		setTimeout(() => {
-			if (!renderHandled) {
-				processRenderComplete()
-			}
-		}, 500)
+		
+		tempMap.renderSync()
 	}
 
 	return (
