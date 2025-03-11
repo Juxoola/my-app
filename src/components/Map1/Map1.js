@@ -76,6 +76,11 @@ const Map1 = () => {
 
 	const clickTimeoutRef = useRef(null)
 
+	const [mergeStatus, setMergeStatus] = useState(null)
+
+	const [exportScale, setExportScale] = useState('1.0')
+	const [isExporting, setIsExporting] = useState(false)
+
 	const handleLogin = () => {
 		navigate('/login')
 	}
@@ -228,35 +233,6 @@ const Map1 = () => {
 						)
 						features.push(arrivalFeature)
 					}
-					// if (
-					// 	flight.departure_coords &&
-					// 	typeof flight.departure_coords === 'object' &&
-					// 	flight.departure_coords.x != null &&
-					// 	flight.departure_coords.y != null &&
-					// 	flight.arrival_coords &&
-					// 	typeof flight.arrival_coords === 'object' &&
-					// 	flight.arrival_coords.x != null &&
-					// 	flight.arrival_coords.y != null
-					// ) {
-					// 	const lineFeature = new Feature({
-					// 		geometry: new LineString([
-					// 			fromLonLat([
-					// 				flight.departure_coords.x,
-					// 				flight.departure_coords.y,
-					// 			]),
-					// 			fromLonLat([flight.arrival_coords.x, flight.arrival_coords.y]),
-					// 		]),
-					// 	})
-					// 	lineFeature.setStyle(
-					// 		new Style({
-					// 			stroke: new Stroke({
-					// 				color: 'rgba(0, 0, 0, 0.8)',
-					// 				width: 2,
-					// 			}),
-					// 		})
-					// 	)
-					// 	features.push(lineFeature)
-					// }
 				})
 
 				if (pointsLayerRef.current) {
@@ -652,147 +628,398 @@ const Map1 = () => {
 		return newSource
 	}
 
-	const handleSave = () => {
+	const saveLayerToTiff = (layer, filename, mapSize) => {
+		const scale = parseFloat(exportScale)
+		const dimensionScale = Math.sqrt(scale)
+		const scaledWidth = Math.floor(mapSize[0] * dimensionScale)
+		const scaledHeight = Math.floor(mapSize[1] * dimensionScale)
+
+		return new Promise((resolve, reject) => {
+			try {
+				// Создаём временный контейнер для карты с масштабированным размером
+				const tempContainer = document.createElement('div')
+				tempContainer.style.position = 'absolute'
+				tempContainer.style.top = '-10000px'
+				tempContainer.style.left = '-10000px'
+				tempContainer.style.width = `${scaledWidth}px`
+				tempContainer.style.height = `${scaledHeight}px`
+				document.body.appendChild(tempContainer)
+
+				const currentView = mapRef.current.getView()
+				const extent = currentView.calculateExtent(mapSize)
+				const projection = currentView.getProjection()
+
+				// Временная карта с масштабированным размером 
+				const tempMap = new Map({
+					target: tempContainer,
+					layers: [layer],
+					view: new View({
+						projection: projection,
+						extent: extent,
+					}),
+				})
+
+				tempMap.getView().fit(extent, {
+					size: [scaledWidth, scaledHeight],
+					padding: [0, 0, 0, 0],
+				})
+
+				tempMap.once('rendercomplete', () => {
+					try {
+						const tempViewport = tempMap.getViewport()
+						const canvases = tempViewport.querySelectorAll('canvas')
+						const compositeCanvas = document.createElement('canvas')
+						compositeCanvas.width = scaledWidth
+						compositeCanvas.height = scaledHeight
+						const compositeCtx = compositeCanvas.getContext('2d')
+
+						canvases.forEach(canvas => {
+							if (canvas.width > 0) {
+								const opacity = canvas.parentNode.style.opacity
+								compositeCtx.globalAlpha = opacity === '' ? 1 : Number(opacity)
+								compositeCtx.drawImage(canvas, 0, 0)
+							}
+						})
+
+						const scaledPolygonPoints = polygonPoints.map(coord =>
+							tempMap.getPixelFromCoordinate(coord)
+						)
+						const xs = scaledPolygonPoints.map(p => p[0])
+						const ys = scaledPolygonPoints.map(p => p[1])
+						const minX = Math.min(...xs)
+						const minY = Math.min(...ys)
+						const maxX = Math.max(...xs)
+						const maxY = Math.max(...ys)
+						const width = maxX - minX
+						const height = maxY - minY
+
+						if (width < 1 || height < 1) {
+							throw new Error('Полигон слишком мал после масштабирования')
+						}
+
+						const clippedCanvas = document.createElement('canvas')
+						clippedCanvas.width = width
+						clippedCanvas.height = height
+						const clippedCtx = clippedCanvas.getContext('2d')
+
+						clippedCtx.beginPath()
+						clippedCtx.moveTo(
+							scaledPolygonPoints[0][0] - minX,
+							scaledPolygonPoints[0][1] - minY
+						)
+						for (let i = 1; i < scaledPolygonPoints.length; i++) {
+							clippedCtx.lineTo(
+								scaledPolygonPoints[i][0] - minX,
+								scaledPolygonPoints[i][1] - minY
+							)
+						}
+						clippedCtx.closePath()
+						clippedCtx.clip()
+						clippedCtx.drawImage(
+							compositeCanvas,
+							minX,
+							minY,
+							width,
+							height,
+							0,
+							0,
+							width,
+							height
+						)
+
+						const imageData = clippedCtx.getImageData(0, 0, width, height)
+						const tiffBuffer = UTIF.encodeImage(imageData.data, width, height)
+						const tiffBlob = new Blob([tiffBuffer], { type: 'image/tiff' })
+
+						console.log(
+							`Создан TIFF-blob для ${filename}, размер: ${tiffBuffer.byteLength} байт, масштаб: ${scale}x, размеры: ${width}x${height}`
+						)
+
+						tempMap.setTarget(null)
+						document.body.removeChild(tempContainer)
+
+						resolve({
+							blob: tiffBlob,
+							filename: filename,
+						})
+					} catch (error) {
+						console.error('Ошибка при создании TIFF:', error)
+						reject(error)
+					}
+				})
+
+				tempMap.renderSync()
+			} catch (error) {
+				console.error('Ошибка при настройке карты:', error)
+				reject(error)
+			}
+		})
+	}
+
+	const handleSave = async () => {
 		if (!mapRef.current) return
 
-		const mapSize = mapRef.current.getSize()
+		setIsExporting(true)
 
-		const tempContainer = document.createElement('div')
-		tempContainer.style.position = 'absolute'
-		tempContainer.style.top = '-10000px'
-		tempContainer.style.left = '-10000px'
-		tempContainer.style.width = mapSize[0] + 'px'
-		tempContainer.style.height = mapSize[1] + 'px'
-		document.body.appendChild(tempContainer)
+		try {
+			await fetch('http://localhost:3001/api/delete-files', {
+				method: 'POST',
+			})
+			console.log('Предыдущие файлы удалены')
 
-		const tempOsmLayer = new TileLayer({
-			source: new OSM({ crossOrigin: 'anonymous' }),
-			visible: saveLayerOptions.osm,
-		})
-		const tempStatesLayer = createWMSLayer(
-			'topp:states',
-			saveLayerOptions.states
-		)
-		const tempRoadsLayer = createWMSLayer(
-			'topp:tasmania_roads',
-			saveLayerOptions.roads
-		)
+			const mapSize = mapRef.current.getSize()
 
-		const tempAirportsLayer = new VectorLayer({
-			source: cloneVectorSource(pointsLayerRef.current.getSource()),
-			visible: saveLayerOptions.airports,
-		})
-		const tempManualLayer = new VectorLayer({
-			source: cloneVectorSource(manualPointsLayerRef.current.getSource()),
-			visible: saveLayerOptions.manual,
-		})
-		const tempRouteLayer = new VectorLayer({
-			source: cloneVectorSource(routeLayerRef.current.getSource()),
-			visible: saveLayerOptions.route,
-		})
-		const tempPolygonLayer = new VectorLayer({
-			source: cloneVectorSource(polygonLayerRef.current.getSource()),
-			visible: saveLayerOptions.polygon,
-		})
+			const layersToSave = []
 
-		// Временная карта для сохранения
-		const tempMap = new Map({
-			target: tempContainer,
-			layers: [
-				tempOsmLayer,
-				tempStatesLayer,
-				tempRoadsLayer,
-				tempAirportsLayer,
-				tempManualLayer,
-				tempRouteLayer,
-				tempPolygonLayer,
-			],
-			view: new View({
-				center: mapRef.current.getView().getCenter(),
-				zoom: mapRef.current.getView().getZoom(),
-				projection: mapRef.current.getView().getProjection(),
-			}),
-		})
+			// Добавляем выбранные слои в массив
+			if (saveLayerOptions.osm) {
+				layersToSave.push({
+					layer: new TileLayer({
+						source: new OSM({ crossOrigin: 'anonymous' }),
+						visible: true,
+					}),
+					filename: 'osm.tiff',
+					description: 'OSM',
+				})
+			}
+			if (saveLayerOptions.states) {
+				layersToSave.push({
+					layer: createWMSLayer('topp:states', true),
+					filename: 'states.tiff',
+					description: 'States',
+				})
+			}
+			if (saveLayerOptions.roads) {
+				layersToSave.push({
+					layer: createWMSLayer('topp:tasmania_roads', true),
+					filename: 'roads.tiff',
+					description: 'Roads',
+				})
+			}
+			if (saveLayerOptions.airports) {
+				layersToSave.push({
+					layer: new VectorLayer({
+						source: cloneVectorSource(pointsLayerRef.current.getSource()),
+						visible: true,
+					}),
+					filename: 'airports.tiff',
+					description: 'Airports',
+				})
+			}
+			if (saveLayerOptions.manual) {
+				layersToSave.push({
+					layer: new VectorLayer({
+						source: cloneVectorSource(manualPointsLayerRef.current.getSource()),
+						visible: true,
+					}),
+					filename: 'manual.tiff',
+					description: 'Manual Points',
+				})
+			}
+			if (saveLayerOptions.route) {
+				layersToSave.push({
+					layer: new VectorLayer({
+						source: cloneVectorSource(routeLayerRef.current.getSource()),
+						visible: true,
+					}),
+					filename: 'route.tiff',
+					description: 'Route',
+				})
+			}
+			if (saveLayerOptions.polygon) {
+				layersToSave.push({
+					layer: new VectorLayer({
+						source: cloneVectorSource(polygonLayerRef.current.getSource()),
+						visible: true,
+					}),
+					filename: 'polygon.tiff',
+					description: 'Polygon',
+				})
+			}
 
-		tempMap.once('rendercomplete', () => {
-			const tempViewport = tempMap.getViewport()
-			const canvases = tempViewport.querySelectorAll('canvas')
-			const compositeCanvas = document.createElement('canvas')
-			compositeCanvas.width = mapSize[0]
-			compositeCanvas.height = mapSize[1]
-			const compositeCtx = compositeCanvas.getContext('2d')
-
-			canvases.forEach(canvas => {
-				if (canvas.width > 0) {
-					const opacity = canvas.parentNode.style.opacity
-					compositeCtx.globalAlpha = opacity === '' ? 1 : Number(opacity)
-					compositeCtx.drawImage(canvas, 0, 0)
-				}
+			const selectedLayers = []
+			layersToSave.forEach(item => {
+				selectedLayers.push({
+					filename: item.filename,
+					description: item.description,
+				})
 			})
 
-			const pixelCoords = polygonPoints.map(coord =>
-				tempMap.getPixelFromCoordinate(coord)
-			)
-			const xs = pixelCoords.map(p => p[0])
-			const ys = pixelCoords.map(p => p[1])
-			const minX = Math.min(...xs)
-			const minY = Math.min(...ys)
-			const maxX = Math.max(...xs)
-			const maxY = Math.max(...ys)
-			const width = maxX - minX
-			const height = maxY - minY
+			const uploadTiffFiles = async () => {
+				try {
+					setMergeStatus({
+						success: true,
+						message: 'Подготовка файлов...',
+					})
 
-			const clippedCanvas = document.createElement('canvas')
-			clippedCanvas.width = width
-			clippedCanvas.height = height
-			const clippedCtx = clippedCanvas.getContext('2d')
+					const tiffPromises = layersToSave.map(item =>
+						saveLayerToTiff(item.layer, item.filename, mapSize)
+					)
 
-			clippedCtx.beginPath()
-			clippedCtx.moveTo(pixelCoords[0][0] - minX, pixelCoords[0][1] - minY)
-			for (let i = 1; i < pixelCoords.length; i++) {
-				clippedCtx.lineTo(pixelCoords[i][0] - minX, pixelCoords[i][1] - minY)
+					const tiffFilesToUpload = await Promise.all(tiffPromises)
+
+					console.log(
+						`Создано файлов для загрузки: ${tiffFilesToUpload.length}`
+					)
+
+					if (tiffFilesToUpload.length === 0) {
+						throw new Error('Нет файлов для отправки на сервер')
+					}
+
+					setMergeStatus({
+						success: true,
+						message: 'Загрузка файлов на сервер...',
+					})
+
+					const formData = new FormData()
+
+					tiffFilesToUpload.forEach((file, index) => {
+						console.log(`Добавление файла в formData: ${file.filename}`)
+						formData.append(
+							'tiffFiles',
+							new Blob([file.blob], { type: 'image/tiff' }),
+							file.filename
+						)
+					})
+
+					// Загружаем файлы на сервер
+					console.log('Отправка запроса на сервер...')
+					const uploadResponse = await fetch(
+						'http://localhost:3001/api/upload-tiff',
+						{
+							method: 'POST',
+							body: formData,
+						}
+					)
+
+					console.log('Статус ответа:', uploadResponse.status)
+
+					if (!uploadResponse.ok) {
+						const errorText = await uploadResponse.text()
+						console.error('Ошибка ответа сервера:', errorText)
+						throw new Error(
+							`Ошибка при загрузке файлов на сервер (${uploadResponse.status})`
+						)
+					}
+
+					const responseData = await uploadResponse.json()
+					console.log('Ответ от сервера:', responseData)
+
+					setMergeStatus({
+						success: true,
+						message: 'Обработка файлов...',
+					})
+
+					const geographicCoords = polygonPoints.map(coord => toLonLat(coord))
+
+					const mergeRequest = {
+						layers: selectedLayers,
+						polygon_coords: geographicCoords,
+					}
+
+					const mergeResponse = await fetch(
+						'http://localhost:3001/api/merge-tiff',
+						{
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify(mergeRequest),
+						}
+					)
+
+					if (!mergeResponse.ok) {
+						throw new Error('Ошибка при объединении слоев')
+					}
+
+					const mergeResult = await mergeResponse.json()
+
+					setMergeStatus({
+						success: true,
+						message: `Слои успешно объединены (масштаб: ${exportScale}x)`,
+						downloadFiles: mergeResult.files,
+					})
+
+				} catch (error) {
+					console.error('Ошибка:', error)
+					setMergeStatus({
+						success: false,
+						message: `Ошибка: ${error.message}`,
+					})
+					setTimeout(() => setMergeStatus(null), 5000)
+				} finally {
+					setIsExporting(false)
+				}
 			}
-			clippedCtx.closePath()
-			clippedCtx.clip()
 
-			clippedCtx.drawImage(
-				compositeCanvas,
-				minX,
-				minY,
-				width,
-				height,
-				0,
-				0,
-				width,
-				height
+			uploadTiffFiles()
+		} catch (error) {
+			console.error('Ошибка:', error)
+			setMergeStatus({
+				success: false,
+				message: `Ошибка при сохранении: ${error.message}`,
+			})
+			setTimeout(() => setMergeStatus(null), 5000)
+		}
+	}
+
+	const downloadAllFilesAsZip = async files => {
+		try {
+			setMergeStatus({
+				...mergeStatus,
+				message: 'Подготовка архива для скачивания...',
+			})
+
+			const filenames = files.map(file => file.filename)
+
+			// Отправляем запрос на скачивание архива
+			const response = await fetch(
+				'http://localhost:3001/api/download-all-zip',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ filenames, deleteAfterDownload: true }),
+				}
 			)
 
-			const imageData = clippedCtx.getImageData(0, 0, width, height)
-			const tiffBuffer = UTIF.encodeImage(imageData.data, width, height)
-			const tiffBlob = new Blob([tiffBuffer], { type: 'image/tiff' })
-			const link = document.createElement('a')
-			link.href = URL.createObjectURL(tiffBlob)
-			link.download = 'map_capture.tiff'
-			link.click()
+			if (!response.ok) {
+				throw new Error('Ошибка при создании архива')
+			}
 
-			const coordsText = JSON.stringify(
-				polygonPoints.map(coord => toLonLat(coord)),
-				null,
-				2
-			)
-			const blob = new Blob([coordsText], { type: 'text/plain' })
-			const textUrl = URL.createObjectURL(blob)
-			const link2 = document.createElement('a')
-			link2.href = textUrl
-			link2.download = 'polygon_coordinates.txt'
-			link2.click()
+			const blob = await response.blob()
 
-			tempMap.setTarget(null)
-			document.body.removeChild(tempContainer)
-		})
+			const url = window.URL.createObjectURL(blob)
+			const a = document.createElement('a')
+			a.style.display = 'none'
+			a.href = url
+			a.download = 'all_layers.zip'
+			document.body.appendChild(a)
+			a.click()
 
-		
-		tempMap.renderSync()
+			window.URL.revokeObjectURL(url)
+			document.body.removeChild(a)
+
+			// Задержка перед закрытием меню, чтобы пользователь понял что файл скачивается
+			setTimeout(() => {
+				setMergeStatus(null)
+			}, 1500)
+		} catch (error) {
+			console.error('Ошибка при скачивании архива:', error)
+			setMergeStatus({
+				...mergeStatus,
+				message: `Ошибка при скачивании архива: ${error.message}`,
+			})
+		}
+	}
+
+	const handleCloseMenu = async () => {
+		try {
+			await fetch('http://localhost:3001/api/delete-files', {
+				method: 'POST',
+			})
+			setMergeStatus(null)
+		} catch (error) {
+			console.error('Ошибка при закрытии и очистке файлов:', error)
+			setMergeStatus(null)
+		}
 	}
 
 	return (
@@ -901,6 +1128,27 @@ const Map1 = () => {
 			{isShowingSaveMenu && (
 				<div className='save-menu'>
 					<h3>Сохранить область</h3>
+					<div className='scale-selector'>
+						<label>Масштаб экспорта:</label>
+						<select
+							value={exportScale}
+							onChange={e => setExportScale(e.target.value)}
+						>
+							<option value='0.5'>0.5x (Уменьшенное разрешение)</option>
+							<option value='1.0'>1.0x (Стандартное разрешение)</option>
+							<option value='1.5'>1.5x (Повышенное разрешение)</option>
+							<option value='2.0'>2.0x (Высокое разрешение)</option>
+							<option value='2.5'>2.5x (Очень высокое разрешение)</option>
+							<option value='3.0'>3.0x (Сверхвысокое разрешение)</option>
+							<option value='3.5'>3.5x (Максимальное разрешение)</option>
+							<option value='4.0'>4.0x (Наивысшее разрешение)</option>
+						</select>
+						<small className='scale-hint'>
+							Чем выше масштаб, тем детальнее изображение, но больше время
+							обработки.
+						</small>
+					</div>
+
 					<p>Выберите слои для сохранения:</p>
 					<div>
 						<label>
@@ -996,9 +1244,44 @@ const Map1 = () => {
 						</label>
 					</div>
 					<div className='buttons'>
-						<button onClick={handleSave}>Сохранить</button>
-						<button onClick={() => setIsShowingSaveMenu(false)}>Отмена</button>
+						<button onClick={handleSave} disabled={isExporting}>
+							{isExporting ? 'Сохранение...' : 'Сохранить'}
+						</button>
+						<button
+							onClick={() => setIsShowingSaveMenu(false)}
+							disabled={isExporting}
+						>
+							Отмена
+						</button>
 					</div>
+				</div>
+			)}
+			{mergeStatus && (
+				<div
+					className={`merge-notification ${
+						mergeStatus.success ? 'success' : 'error'
+					}`}
+				>
+					<div className='merge-notification-header'>
+						<p>{mergeStatus.message}</p>
+						<button className='close-button' onClick={handleCloseMenu}>
+							✕
+						</button>
+					</div>
+					{mergeStatus.downloadFiles && (
+						<div className='download-links'>
+							<div className='download-options'>
+								<button
+									className='download-all-button'
+									onClick={() =>
+										downloadAllFilesAsZip(mergeStatus.downloadFiles)
+									}
+								>
+									Скачать все файлы архивом
+								</button>
+							</div>
+						</div>
+					)}
 				</div>
 			)}
 		</div>

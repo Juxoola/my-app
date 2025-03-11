@@ -6,6 +6,9 @@ services:
       - '3001:3001'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+    volumes:
+      - tiff_inputs:/app/Server/temp_inputs
+      - tiff_outputs:/app/Server/outputs
     depends_on:
       - geoserver
       - postgres
@@ -43,4 +46,6 @@ networks:
 
 volumes:
   geoserver_data:
+  tiff_inputs:
+  tiff_outputs:
   postgres_data:
