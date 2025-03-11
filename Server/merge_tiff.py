@@ -8,6 +8,11 @@ import rasterio
 from rasterio.transform import from_bounds
 import datetime
 
+def ensure_ascii(text):
+    if text is None:
+        return ""
+    return text.encode('ascii', 'replace').decode('ascii')
+
 def merge_tiff_files(data):
     try:
         layers = data.get('layers', [])
@@ -119,14 +124,14 @@ def merge_tiff_files(data):
             tiff.write(
                 np.array(composite),
                 photometric='rgb',
-                description="Композитный слой"
+                description=ensure_ascii("Композитный слой")
             )
 
             for img in reversed(images):
                 tiff.write(
                     img['array'],
                     photometric='rgb',
-                    description=img['description']
+                    description=ensure_ascii(img['description'])
                 )
 
         composite_file = os.path.join(output_dir, "merged_composite.tif")
