@@ -100,9 +100,9 @@ def merge_tiff_files(data):
                     driver='GTiff',
                     height=img['height'],
                     width=img['width'],
-                    count=4,  # RGBA
+                    count=4, 
                     dtype=img['array'].dtype,
-                    crs='+proj=longlat +datum=WGS84 +no_defs',  # Явно указываем WGS84
+                    crs='+proj=longlat +datum=WGS84 +no_defs', 
                     transform=transform,
                 ) as dst:
                     for i in range(4):
@@ -141,7 +141,6 @@ def merge_tiff_files(data):
         if bbox:
             geo_composite_file = os.path.join(output_dir, "merged_composite_geo.tif")
             
-            # Используем ту же логику создания трансформации
             composite_transform = from_bounds(bbox[0], bbox[1], bbox[2], bbox[3],
                                              composite.width, composite.height)
             
