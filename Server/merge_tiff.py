@@ -6,7 +6,6 @@ import numpy as np
 from PIL import Image
 import rasterio
 from rasterio.transform import from_bounds
-import datetime
 
 def ensure_ascii(text):
     if text is None:
@@ -27,12 +26,10 @@ def merge_tiff_files(data):
 
         os.makedirs(input_dir, exist_ok=True)
         os.makedirs(output_dir, exist_ok=True)
-        
         polygon_json_path = os.path.join(output_dir, "polygon_coords.json")
         with open(polygon_json_path, 'w') as f:
             json.dump({
-                "polygon_coords": polygon_coords, 
-                "timestamp": str(datetime.datetime.now())
+                "polygon_coords": polygon_coords
             }, f, indent=2)
 
         images = []
