@@ -16,6 +16,7 @@ import AddLocationIcon from '@mui/icons-material/AddLocation'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import StraightenIcon from '@mui/icons-material/Straighten'
 import CropFreeIcon from '@mui/icons-material/CropFree'
+import SaveAltIcon from '@mui/icons-material/SaveAlt'
 import './Map1.css'
 import { getDistance } from 'geolib'
 import { Permutation } from 'js-combinatorics'
@@ -80,6 +81,8 @@ const Map1 = () => {
 
 	const [exportScale, setExportScale] = useState('1.0')
 	const [isExporting, setIsExporting] = useState(false)
+
+	const [canExportGpx, setCanExportGpx] = useState(false)
 
 	const handleLogin = () => {
 		navigate('/login')
@@ -495,11 +498,13 @@ const Map1 = () => {
 				source.addFeature(endFeature)
 			}
 			setRouteDistance(bestDistance)
+			setCanExportGpx(true)
 		} else {
 			if (routeLayerRef.current) {
 				routeLayerRef.current.getSource().clear()
 			}
 			setRouteDistance(null)
+			setCanExportGpx(false)
 		}
 	}, [selectedAirports])
 
@@ -548,6 +553,7 @@ const Map1 = () => {
 				routeLayerRef.current.getSource().clear()
 			}
 			setRouteDistance(null)
+			setCanExportGpx(false)
 		}
 		setIsSelectingAirports(!isSelectingAirports)
 	}
@@ -1022,6 +1028,95 @@ const Map1 = () => {
 		}
 	}
 
+	// Функция для создания GPX формата из маршрута
+	const createGpxContent = () => {
+		if (selectedAirports.length < 2) return null
+
+		const points = selectedAirports.map(feature => 
+			feature.getGeometry().getCoordinates()
+		)
+		const pointsLonLat = points.map(coord => toLonLat(coord))
+		
+		// Определение оптимального порядка точек (тот же алгоритм, что и для отображения)
+		const n = pointsLonLat.length
+		let bestOrder = []
+		let bestDistance = Infinity
+
+		if (n === 2) {
+			bestOrder = [0, 1]
+		} else {
+			const index = []
+			for (let i = 1; i < n - 1; i++) {
+				index.push(i)
+			}
+			const permutations = new Permutation(index).toArray()
+			for (const perm of permutations) {
+				const routeOrder = [0, ...perm, n - 1]
+				let distance = 0
+				for (let i = 0; i < routeOrder.length - 1; i++) {
+					distance += calculateDistance(
+						pointsLonLat[routeOrder[i]],
+						pointsLonLat[routeOrder[i + 1]]
+					)
+				}
+				if (distance < bestDistance) {
+					bestDistance = distance
+					bestOrder = routeOrder
+				}
+			}
+		}
+
+		// Сортируем точки в оптимальном порядке
+		const orderedPoints = bestOrder.map(idx => pointsLonLat[idx])
+
+		// Текущая дата и время для метаданных GPX
+		const now = new Date()
+		const timestamp = now.toISOString()
+
+		// Формирование GPX документа
+		let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Map Application" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Маршрут</name>
+    <time>${timestamp}</time>
+  </metadata>
+  <trk>
+    <name>Оптимальный маршрут</name>
+    <trkseg>`;
+
+		// Добавление точек маршрута
+		orderedPoints.forEach(point => {
+			gpx += `
+      <trkpt lat="${point[1]}" lon="${point[0]}">
+        <ele>0</ele>
+        <time>${timestamp}</time>
+      </trkpt>`;
+		});
+
+		gpx += `
+    </trkseg>
+  </trk>
+</gpx>`;
+
+		return gpx;
+	};
+
+	// Функция для скачивания GPX файла
+	const downloadGpxFile = () => {
+		const gpxContent = createGpxContent();
+		if (!gpxContent) return;
+
+		const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `route_${new Date().toISOString().slice(0, 10)}.gpx`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	};
+
 	return (
 		<div className='map1-container'>
 			<div className='map1-menu'>
@@ -1121,7 +1216,19 @@ const Map1 = () => {
 			</button>
 			{routeDistance !== null && (
 				<div className='route-distance'>
-					Расстояние: {routeDistance.toFixed(2)} км
+					<span>Расстояние: {routeDistance.toFixed(2)} км</span>
+					{canExportGpx && (
+						<button
+							className='export-gpx-inline-button'
+							onClick={e => {
+								downloadGpxFile();
+								e.currentTarget.blur();
+							}}
+							title="Скачать маршрут в формате GPX"
+						>
+							<SaveAltIcon fontSize='small' />
+						</button>
+					)}
 				</div>
 			)}
 
